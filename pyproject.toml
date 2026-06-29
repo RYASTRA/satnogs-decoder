@@ -32,3 +32,4 @@ addopts = "-m 'not slow and not network'"
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["tests/fixtures/generated"]  # ksc-generated parsers — do not lint
