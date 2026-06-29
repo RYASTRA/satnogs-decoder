@@ -1,0 +1,34 @@
+[project]
+name = "satnogs-decoder"
+version = "0.1.0"
+description = "A Kaitai .ksy decoder workbench for SatNOGS telemetry: generate, validate, infer."
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "satnogs-decoders>=1.0",
+    "kaitaistruct>=0.10",
+    "ruamel.yaml>=0.18",
+    "datasets>=2.19",
+    "huggingface_hub>=0.23",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4", "pyright>=1.1"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["satnogs_decoder*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: needs the ksc compiler or the reference package",
+    "network: needs the live SatNOGS API",
+]
+addopts = "-m 'not slow and not network'"
+
+[tool.ruff]
+line-length = 100
