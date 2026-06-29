@@ -51,12 +51,14 @@ def rows_from_frames(
         ``transmitter``, ``observation_id``, ``decoded_json``.
     """
     rows: list[dict] = []
+    successful_decodes = 0
     for f in frames:
         decoded_json: str | None = None
         if sat_module is not None:
             d = decode_reference(sat_module, f.data)
             if d:
                 decoded_json = _bytes_safe_json(d)
+                successful_decodes += 1
         rows.append(
             {
                 "norad": f.norad,
@@ -67,6 +69,11 @@ def rows_from_frames(
                 "observation_id": f.observation_id,
                 "decoded_json": decoded_json,
             }
+        )
+    if sat_module is not None and frames and successful_decodes == 0:
+        raise RuntimeError(
+            f"sat_module={sat_module!r} produced zero successful decodes across "
+            f"{len(frames)} frame(s) — check the module name or frame data"
         )
     return rows
 

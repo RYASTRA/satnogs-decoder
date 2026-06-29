@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import importlib.util
 import io
 import pathlib
@@ -11,6 +12,19 @@ from kaitaistruct import KaitaiStream, KaitaiStruct
 from ruamel.yaml import YAML
 
 _SCALAR = (int, float, str, bytes, bool)
+
+# One shared directory for all compiled ksc output; keyed by meta/id so each
+# spec overwrites its own files on recompile rather than leaking a new tmpdir
+# per call.  Trade-off: files persist for the process lifetime (acceptable
+# because the generated .py must stay on disk to remain importable).
+_KSC_CACHE: pathlib.Path | None = None
+
+
+def _ksc_cache() -> pathlib.Path:
+    global _KSC_CACHE
+    if _KSC_CACHE is None:
+        _KSC_CACHE = pathlib.Path(tempfile.mkdtemp(prefix="ksc_cache_"))
+    return _KSC_CACHE
 
 
 @dataclass
@@ -42,7 +56,7 @@ def compile_ksy(
     Raises RuntimeError if ksc exits non-zero.
     """
     ks_id = _meta_id(ksy_text)
-    tmp = pathlib.Path(tempfile.mkdtemp())
+    tmp = _ksc_cache()
     (tmp / f"{ks_id}.ksy").write_text(ksy_text)
 
     cmd = [ksc] if isinstance(ksc, str) else list(ksc)
@@ -76,6 +90,8 @@ def _flatten(obj: object, prefix: str = "") -> dict[str, object]:
         name = f"{prefix}{k}"
         if isinstance(v, _SCALAR):
             out[name] = v
+        elif isinstance(v, enum.Enum):
+            out[name] = v.value
         elif isinstance(v, KaitaiStruct):
             out.update(_flatten(v, name + "."))
         elif isinstance(v, list):
