@@ -65,7 +65,7 @@ def field_stats(results: list[ParseResult]) -> list[FieldStat]:
                 min=mn,
                 max=mx,
                 constant=len(set(map(repr, vals))) == 1,
-                all_zero=all(v in (0, 0.0, b"", "", None) for v in vals),
+                all_zero=bool(nums) and all(v == 0 for v in nums),
             )
         )
     return out

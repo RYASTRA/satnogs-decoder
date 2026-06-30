@@ -23,5 +23,7 @@ def cross_check(ours: list[dict], refs: list[dict | None]) -> CrossCheck:
                 matched += 1
             else:
                 mism[k] = mism.get(k, 0) + 1
+    # agreement is field-pair-weighted: a frame with more shared fields contributes
+    # more to the numerator/denominator than a frame with fewer shared fields.
     agreement = (matched / compared) if compared else 1.0
     return CrossCheck(n_compared=compared, agreement=agreement, mismatched_fields=mism)
