@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Internal working material — kept local, NOT published to the public remote
+/docs/
+/tests/
