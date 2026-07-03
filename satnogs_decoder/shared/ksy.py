@@ -39,6 +39,10 @@ class KsyInstance:
     scale: float | None = None
     offset: float | None = None
 
+    def __post_init__(self) -> None:
+        if self.value is None and self.pos is None:
+            raise ValueError(f"KsyInstance {self.id!r} needs either value= (computed) or pos= (positional)")
+
 
 @dataclass
 class KsyType:
