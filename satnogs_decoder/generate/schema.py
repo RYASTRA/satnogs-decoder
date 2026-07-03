@@ -7,17 +7,18 @@ failure raises `SpecError` with the offending token embedded in the message.
 from __future__ import annotations
 
 import pathlib
+import re
 from dataclasses import dataclass
 
 from ruamel.yaml import YAML
 
-_SCALARS = {f"{b}{n}" for b in ("u", "s") for n in (1, 2, 4, 8)} | {"f4", "f8", "str"}
+_INT_RE = re.compile(r"^(u[1248]|s[1248]|f[48])(le|be)?$")
+_BIT_RE = re.compile(r"^b([1-9]|[1-5][0-9]|6[0-4])$")   # b1..b64
+_UINT_RE = re.compile(r"^u[1248](le|be)?$")
 
 
 def _known(t: str, types: set[str]) -> bool:
-    return (t in _SCALARS or t in types
-            or t.rstrip("leb").rstrip("0123456789") in {"u", "s", "f"} and any(c.isdigit() for c in t)
-            or (t.startswith("b") and t[1:].isdigit()))
+    return t == "str" or t in types or bool(_INT_RE.match(t)) or bool(_BIT_RE.match(t))
 
 
 class SpecError(ValueError):
@@ -127,6 +128,9 @@ def _parse_instances(raw_insts: "list | None", where: str) -> "tuple[InstanceSpe
         seen.add(iid)
         if "value" not in raw:
             raise SpecError(f"{where}: instance {iid!r} missing required key 'value'")
+        ivalue = raw["value"]
+        if not isinstance(ivalue, str) or not ivalue:
+            raise SpecError(f"{where}: instance {iid!r} 'value' must be a non-empty string, got {ivalue!r}")
         out.append(InstanceSpec(
             id=iid, value=raw["value"], unit=raw.get("unit"),
             enum=raw.get("enum"), doc=raw.get("doc"),
@@ -154,6 +158,8 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
         raise SpecError(f"meta.endian must be 'le' or 'be', got {endian!r}")
 
     transport = data.get("transport", "none")
+    if transport not in ("ax25", "csp", "none"):
+        raise SpecError(f"transport must be one of 'ax25', 'csp', 'none', got {transport!r}")
 
     raw_enums = data.get("enums") or {}
     if not isinstance(raw_enums, dict):
@@ -213,7 +219,13 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
     if raw_disc is not None:
         if not isinstance(raw_disc, dict) or "pos" not in raw_disc or "type" not in raw_disc:
             raise SpecError("discriminator must be a mapping with 'pos' and 'type'")
-        discriminator = Discriminator(pos=raw_disc["pos"], type=raw_disc["type"])
+        disc_type = raw_disc["type"]
+        if not isinstance(disc_type, str) or not _UINT_RE.match(disc_type):
+            raise SpecError(
+                f"discriminator.type must be an unsigned integer type "
+                f"(u1/u2/u4/u8, optional le/be suffix), got {disc_type!r}"
+            )
+        discriminator = Discriminator(pos=raw_disc["pos"], type=disc_type)
 
     if len(frame_types) > 1 and discriminator is None:
         raise SpecError(
