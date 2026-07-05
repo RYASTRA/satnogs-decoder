@@ -13,9 +13,11 @@ Walk rule:
   under `<id>.<field_id>...<leaf>`.
 - Top-level instances (e.g. the discriminator `kind`) are emitted as
   `<id>.<instance_id>`.
-- The `payload` field is walked under `<id>.payload.<frame_type_id>.<leaf>`
-  when the payload is a switch (multiple frame_types), or
-  `<id>.payload.<leaf>` when there is a single, unswitched frame_type.
+- The `payload` field is walked under `<id>.payload.<leaf>` in both cases:
+  when the payload is a switch (multiple frame_types) and when there is a
+  single, unswitched frame_type. Kaitai's `switch-on` exposes the selected
+  case's fields directly on the switch field, so the case/frame_type name
+  never appears in the path.
 - Within a frame_type (or any sub-type), every seq leaf and every instance
   is a field; a seq field whose type names another declared sub-type is
   walked recursively (one level per the spec, but the walk itself is
@@ -88,9 +90,7 @@ def field_block(ir: KsySpec) -> str:
     if payload is not None:
         if isinstance(payload.type, KsySwitch):
             for frame_type_id in dict.fromkeys(payload.type.cases.values()):
-                _walk_type(
-                    frame_type_id, f"{ir.id}.payload.{frame_type_id}", types, frozenset(), lines
-                )
+                _walk_type(frame_type_id, f"{ir.id}.payload", types, frozenset(), lines)
         elif isinstance(payload.type, str):
             _walk_type(payload.type, f"{ir.id}.payload", types, frozenset(), lines)
 
