@@ -197,12 +197,18 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
         raise SpecError("frame_types is required and must be non-empty")
     frame_types: list[FrameType] = []
     seen_ft_ids: set[str] = set()
+    seen_matches: set = set()
     for raw in raw_frame_types:
         if not isinstance(raw, dict) or "id" not in raw:
             raise SpecError(f"frame_types: entry missing required key 'id': {raw!r}")
         ft_id = raw["id"]
         if ft_id in seen_ft_ids:
             raise SpecError(f"frame_types: duplicate frame_type id {ft_id!r}")
+        if ft_id in known_type_names:
+            raise SpecError(
+                f"frame_types.{ft_id}: frame_type id {ft_id!r} collides with a declared "
+                f"types.{ft_id!r} sub-type — dispatch and sub-type names must be distinct"
+            )
         seen_ft_ids.add(ft_id)
         where = f"frame_types.{ft_id}"
         fields = _parse_fields(raw.get("seq"), where, known_type_names)
@@ -212,6 +218,17 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
                 raise SpecError(f"{where}: field {f.id!r} references undeclared sub-type {f.type!r}")
         insts = _parse_instances(raw.get("instances"), where)
         match = raw.get("match", "default")
+        if match in seen_matches:
+            if match == "default":
+                raise SpecError(
+                    f"{where}: more than one frame_type has match: default — "
+                    f"only one default dispatch case is allowed"
+                )
+            raise SpecError(
+                f"{where}: duplicate discriminator match value {match!r} — "
+                f"each frame_type must have a unique match"
+            )
+        seen_matches.add(match)
         frame_types.append(FrameType(id=ft_id, match=match, seq=fields, instances=insts))
 
     discriminator: Discriminator | None = None

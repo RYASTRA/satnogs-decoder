@@ -7,7 +7,7 @@ enums. This is the crux of `generate`.
 """
 from __future__ import annotations
 
-from .schema import FieldSpec, InstanceSpec, Spec
+from .schema import FieldSpec, InstanceSpec, Spec, SpecError
 from .headers import header
 from satnogs_decoder.shared.ksy import KsyField, KsyInstance, KsySpec, KsySwitch, KsyType
 
@@ -27,8 +27,18 @@ def build_ir(spec: Spec) -> KsySpec:
     for _hname, _htype in hdr_types.items():
         types[_hname] = _htype
     for name, st in spec.types.items():
+        if name in types:
+            raise SpecError(
+                f"types.{name}: name collides with a reserved '{spec.transport}' transport "
+                f"header type {name!r} — rename this sub-type"
+            )
         types[name] = KsyType(seq=_fields(st.seq), instances=_insts(st.instances))
     for ft in spec.frame_types:
+        if ft.id in types:
+            raise SpecError(
+                f"frame_types.{ft.id}: frame_type id collides with a reserved "
+                f"'{spec.transport}' transport header type {ft.id!r} — rename this frame_type"
+            )
         types[ft.id] = KsyType(seq=_fields(ft.seq), instances=_insts(ft.instances))
     top_instances: list[KsyInstance] = []
     if spec.discriminator:
