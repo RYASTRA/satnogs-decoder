@@ -125,9 +125,11 @@ class KsySpec:
             meta["ks-version"] = self.ks_version
         if self.imports:
             meta["imports"] = list(self.imports)
-        if self.doc:
-            meta["doc"] = LS(self.doc)
         out: dict = {"meta": meta, "seq": [self._field(f) for f in self.seq]}
+        if self.doc:
+            # `doc` (the :field dashboard block) is a top-level .ksy key,
+            # a sibling of `meta`/`seq`/`types` — NOT nested under `meta`.
+            out["doc"] = LS(self.doc)
         if self.instances:
             out["instances"] = self._instances(self.instances)
         if self.types:
