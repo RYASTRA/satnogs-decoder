@@ -49,7 +49,7 @@ def build_ir(spec: Spec) -> KsySpec:
         payload = KsyField(id="payload", type=spec.frame_types[0].id)
     return KsySpec(
         id=spec.id, endian=spec.endian, seq=hdr_seq + [payload],
-        title=spec.title, ks_version=spec.ks_version,
+        title=spec.title, ks_version=spec.ks_version, doc_ref=spec.doc_ref,
         types=types, enums=spec.enums or None,
         instances=top_instances or None,
     )

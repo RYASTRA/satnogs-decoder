@@ -62,6 +62,7 @@ class KsySpec:
     types: "dict[str, KsyType | list[KsyField]] | None" = None
     enums: dict[str, dict[int, str]] | None = None
     doc: str | None = None
+    doc_ref: str | None = None
     instances: list[KsyInstance] | None = None
 
     def _field(self, f: KsyField) -> dict:
@@ -125,6 +126,8 @@ class KsySpec:
             meta["ks-version"] = self.ks_version
         if self.imports:
             meta["imports"] = list(self.imports)
+        if self.doc_ref:
+            meta["doc-ref"] = self.doc_ref
         out: dict = {"meta": meta, "seq": [self._field(f) for f in self.seq]}
         if self.doc:
             # `doc` (the :field dashboard block) is a top-level .ksy key,
