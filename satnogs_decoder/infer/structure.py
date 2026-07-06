@@ -3,10 +3,12 @@ a flat, single-packet, fixed-layout beacon (spec §6).
 
 Rejection is conservative and reason-bearing: any construct whose byte
 layout is not a static left-to-right concatenation of fixed-width leaves
-(switch/repeat/conditional/size-eos/computed-size/instances-with-pos)
-excludes the decoder. A fixed transport header (itself flat scalars or
-`size`d fields, e.g. an AX.25 header) is allowed because its byte width is
-still static.
+(switch/repeat/conditional/size-eos/computed-size/positional-instances)
+excludes the decoder. Positional instances (those with `pos:`) carve bytes
+outside the declared seq, so the seq is not the true layout and must be
+rejected; computed `value:`-only instances (no `pos:`) are pure derivations
+and harmless. A fixed transport header (itself flat scalars or `size`d fields,
+e.g. an AX.25 header) is allowed because its byte width is still static.
 """
 from __future__ import annotations
 
@@ -17,6 +19,19 @@ from ruamel.yaml import YAML
 
 _SCALAR = re.compile(r"^(u[1248]|s[1248]|f[48])(le|be)?$")
 _DISALLOWED_KEYS = ("repeat", "repeat-expr", "repeat-until", "if")
+
+
+def _pos_instance(insts: object) -> str | None:
+    """Return the id of the first positional (`pos:`) instance, or None.
+
+    `value:`-only instances (no `pos:`) are pure derivations and allowed.
+    """
+    if not isinstance(insts, dict):
+        return None
+    for iid, idef in insts.items():
+        if isinstance(idef, dict) and "pos" in idef:
+            return iid
+    return None
 
 
 def _load(ksy_text: str) -> dict:
@@ -72,11 +87,18 @@ def is_flat_beacon(ksy_text: str) -> tuple[bool, str]:
     if not isinstance(doc, dict) or "seq" not in doc:
         return False, "no top-level seq"
     types = doc.get("types") or {}
-    # Reject nested switches anywhere in `types` (a sub-type could hide one).
+    # Reject positional instances (top-level + every sub-type): they carve
+    # bytes the flat seq does not account for, so the seq is not the true layout.
+    bad = _pos_instance(doc.get("instances"))
+    if bad is not None:
+        return False, f"positional instance {bad!r} — seq is not the full byte layout"
     for tname, tdef in types.items():
         for sf in (tdef.get("seq") or []):
             if isinstance(sf, dict) and isinstance(sf.get("type"), dict):
                 return False, f"sub-type {tname!r} contains a switch"
+        sub_bad = _pos_instance(tdef.get("instances"))
+        if sub_bad is not None:
+            return False, f"sub-type {tname!r} has positional instance {sub_bad!r}"
     reason: list[str] = []
     for f in doc["seq"]:
         if not _leaf_ok(f, types, reason, frozenset()):
