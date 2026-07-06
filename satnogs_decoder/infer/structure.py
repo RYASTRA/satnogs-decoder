@@ -7,7 +7,9 @@ layout is not a static left-to-right concatenation of fixed-width leaves
 excludes the decoder. Positional instances (those with `pos:`) carve bytes
 outside the declared seq, so the seq is not the true layout and must be
 rejected; computed `value:`-only instances (no `pos:`) are pure derivations
-and harmless. A fixed transport header (itself flat scalars or `size`d fields,
+and harmless. Fixed magic-byte literals (via `contents:`) are accepted as
+fixed-width leaves, enabling AX.25-style beacons with sync markers or magic
+callsigns. A fixed transport header (itself flat scalars or `size`d fields,
 e.g. an AX.25 header) is allowed because its byte width is still static.
 """
 from __future__ import annotations
@@ -46,6 +48,8 @@ def _leaf_ok(field: dict, types: dict, reason: list[str], seen: frozenset) -> bo
         if k in field:
             reason.append(f"field {field['id']!r} uses '{k}' (not fixed-layout)")
             return False
+    if "contents" in field:
+        return True  # fixed magic-byte literal: constant leaf, width implicit in the literal
     ftype = field.get("type")
     if isinstance(ftype, dict):  # switch-on
         reason.append(f"field {field['id']!r} is a switch (not single-packet)")
