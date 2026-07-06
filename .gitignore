@@ -220,3 +220,6 @@ __marimo__/
 # Internal working material — kept local, NOT published to the public remote
 /docs/
 /tests/
+
+# Phase 4 infer: the temporary training corpus — NEVER pushed (deleted at finalization)
+/corpus/

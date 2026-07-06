@@ -11,6 +11,8 @@ dependencies = [
     "ruamel.yaml>=0.18",
     "datasets>=2.19",
     "huggingface_hub>=0.23",
+    "numpy>=2.0",
+    "scikit-learn>=1.5",
 ]
 
 [project.optional-dependencies]
