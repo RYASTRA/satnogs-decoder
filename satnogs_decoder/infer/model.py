@@ -27,6 +27,12 @@ def field_features(pos_feats: np.ndarray, spans: list[tuple[int, int]]) -> np.nd
     """
     rows: list[np.ndarray] = []
     for (s, e) in spans:
+        if not 0 <= s < e <= len(pos_feats):
+            # Fail loudly: a degenerate/out-of-range span would mean-pool an
+            # empty slice into NaNs and silently corrupt the training matrix.
+            raise ValueError(
+                f"degenerate/out-of-range span ({s}, {e}) for {len(pos_feats)} positions"
+            )
         block = pos_feats[s:e]
         pooled = block.mean(axis=0)
         rows.append(np.concatenate([pooled, pos_feats[s], pos_feats[e - 1], [e - s]]))
