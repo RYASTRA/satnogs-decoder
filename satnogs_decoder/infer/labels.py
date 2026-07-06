@@ -12,15 +12,12 @@ the two orderings align one-to-one.
 from __future__ import annotations
 
 import io
-import re
 
 from kaitaistruct import KaitaiStream, KaitaiStruct
 from ruamel.yaml import YAML
 
 from satnogs_decoder.infer.layout import FieldSpan, Layout
 from satnogs_decoder.shared.kaitai import compile_ksy
-
-_SCALAR = re.compile(r"^(u[1248]|s[1248]|f[48])(le|be)?$")
 
 
 def _leaf_spans(obj: object, prefix: str, out: list[tuple[str, int, int]]) -> None:
@@ -78,9 +75,20 @@ def extract_layout(
 ) -> Layout:
     spans = debug_leaf_spans(ksy_text, frame, import_dirs=import_dirs)
     decls = {name: (t, e) for name, t, e in declared_leaves(ksy_text)}
+    # The two leaf sources must align one-to-one (guaranteed for the flat-beacon
+    # class). A span whose name is absent from the declared seq means the two
+    # walkers diverged — fail LOUDLY rather than emit a plausible-but-wrong
+    # label (this is the ground-truth label miner; a silent bad label is worse
+    # than a crash).
+    missing = [name for name, _, _ in spans if name not in decls]
+    if missing:
+        raise ValueError(
+            f"debug spans reference leaves absent from the declared seq "
+            f"(name divergence — labels untrustworthy): {missing}"
+        )
     layout: Layout = []
     for name, start, end in spans:
-        ftype, has_enum = decls.get(name, ("", False))
+        ftype, has_enum = decls[name]
         signed = bool(ftype) and ftype[0] == "s"
         layout.append(FieldSpan(
             start=start, end=end, width=end - start,
