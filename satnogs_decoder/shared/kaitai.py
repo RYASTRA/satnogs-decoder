@@ -49,17 +49,22 @@ def compile_ksy(
     *,
     ksc: str | list[str] = "ksc",
     import_dirs: list[str] | None = None,
+    debug: bool = False,
 ) -> type:
     """Compile a .ksy spec string to a Python class via ksc.
 
     Returns the generated class (id parts joined with capitalize()).
-    Raises RuntimeError if ksc exits non-zero.
+    Raises RuntimeError if ksc exits non-zero. With debug=True the class is
+    compiled in Kaitai --debug mode (records per-field byte offsets in the
+    parsed object; used by infer.labels to mine true field boundaries).
     """
     ks_id = _meta_id(ksy_text)
     tmp = _ksc_cache()
     (tmp / f"{ks_id}.ksy").write_text(ksy_text)
 
     cmd = [ksc] if isinstance(ksc, str) else list(ksc)
+    if debug:
+        cmd += ["--debug"]
     for d in import_dirs or []:
         cmd += ["--import-path", d]
     cmd += ["--target", "python", "--outdir", str(tmp), str(tmp / f"{ks_id}.ksy")]
