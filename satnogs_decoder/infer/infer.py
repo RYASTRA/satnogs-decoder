@@ -20,32 +20,32 @@ _VALID_WIDTHS = (1, 2, 4, 8)
 _MODEL_DIR = pathlib.Path(__file__).parent / "model"
 
 
-def _snap_width(w: int) -> int:
-    return min(_VALID_WIDTHS, key=lambda v: (abs(v - w), v))
-
-
 def boundaries_to_spans(boundary: np.ndarray, length: int) -> list[tuple[int, int]]:
-    starts = [i for i in range(length) if (i == 0 or boundary[i])]
-    starts = sorted(set(starts))
+    """Tile [0, length) with contiguous, gap-free spans of valid Kaitai scalar
+    widths {1,2,4,8}, respecting predicted field starts.
+
+    Position 0 is always a start. Walking a running cursor, each span takes the
+    WIDEST valid width not exceeding the distance to the next predicted boundary
+    (nor the frame end), so every boundary lands on a span start and the spans
+    cover the whole frame with no gaps or overlaps. A predicted field whose
+    width is not a single scalar width (e.g. 3) is TILED into several valid-width
+    fields (e.g. 2 + 1) rather than dropping bytes — Kaitai has no u3.
+    """
+    starts = sorted({0} | {i for i in range(1, length) if boundary[i]})
     spans: list[tuple[int, int]] = []
     cursor = 0
-    for idx, s in enumerate(starts):
-        nxt = starts[idx + 1] if idx + 1 < len(starts) else length
-        if s < cursor:  # previous snap overran this start; skip it
-            continue
-        raw_w = nxt - s
-        w = _snap_width(raw_w)
-        w = min(w, length - s)               # never run past the frame
-        w = _snap_width(w) if w in _VALID_WIDTHS else max(1, w)
-        spans.append((s, s + w))
-        cursor = s + w
+    while cursor < length:
+        next_start = next((s for s in starts if s > cursor), length)
+        room = min(next_start - cursor, length - cursor)   # >= 1
+        w = max(v for v in _VALID_WIDTHS if v <= room)      # widest valid <= room
+        spans.append((cursor, cursor + w))
+        cursor += w
     return spans
 
 
 def _width_to_type(w: int, signed: bool) -> str:
-    if w in (1, 2, 4, 8):
-        return f"{'s' if signed else 'u'}{w}"
-    return f"b{w * 8}"  # fallback: raw bit field (should not occur after snapping)
+    # boundaries_to_spans guarantees w in {1,2,4,8}.
+    return f"{'s' if signed else 'u'}{w}"
 
 
 def predict_layout(frames: list[bytes], model: InferModel) -> Layout:
