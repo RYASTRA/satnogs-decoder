@@ -16,6 +16,10 @@ _INT_RE = re.compile(r"^(u[1248]|s[1248]|f[48])(le|be)?$")
 _BIT_RE = re.compile(r"^b([1-9]|[1-5][0-9]|6[0-4])$")   # b1..b64
 _UINT_RE = re.compile(r"^u[1248](le|be)?$")
 
+# Exclusive upper bound of the value range a discriminator type can hold,
+# keyed by its byte width (le/be suffix stripped before lookup).
+_UINT_WIDTH_BOUND: dict[str, int] = {"u1": 1 << 8, "u2": 1 << 16, "u4": 1 << 32, "u8": 1 << 64}
+
 
 def _known(t: str, types: set[str]) -> bool:
     return t == "str" or t in types or bool(_INT_RE.match(t)) or bool(_BIT_RE.match(t))
@@ -243,6 +247,17 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
                 f"(u1/u2/u4/u8, optional le/be suffix), got {disc_type!r}"
             )
         discriminator = Discriminator(pos=raw_disc["pos"], type=disc_type)
+
+    if discriminator is not None:
+        base_type = discriminator.type[:2]  # strip optional le/be suffix, e.g. "u2le" -> "u2"
+        bound = _UINT_WIDTH_BOUND[base_type]
+        for ft in frame_types:
+            if isinstance(ft.match, int) and not (0 <= ft.match < bound):
+                raise SpecError(
+                    f"frame_types.{ft.id}: match {ft.match!r} does not fit the discriminator's "
+                    f"{discriminator.type!r} width (must be 0 <= match < {bound}) — "
+                    f"this frame_type would be a silently-dead switch case"
+                )
 
     if len(frame_types) > 1 and discriminator is None:
         raise SpecError(
