@@ -10,6 +10,7 @@ metadata so we never guess.
 from __future__ import annotations
 
 import collections
+import datetime
 
 from satnogs_decoder.infer.labels import extract_layout
 from satnogs_decoder.infer.layout import Layout
@@ -20,13 +21,23 @@ MIN_FRAMES = 30
 
 
 def _year_before(iso_end: str) -> str:
-    # crude: subtract 1 from the year field of an ISO date; good enough for a window start
-    y = int(iso_end[:4]) - 1
-    return f"{y}{iso_end[4:]}"
+    """One year before an ISO date (YYYY-MM-DD...), calendar-safe.
+
+    Naive year-minus-1 breaks on Feb 29 (the prior year is never leap), so use
+    real date arithmetic and clamp Feb 29 -> Feb 28.
+    """
+    y, m, d = int(iso_end[:4]), int(iso_end[5:7]), int(iso_end[8:10])
+    try:
+        return datetime.date(y - 1, m, d).isoformat()
+    except ValueError:  # Feb 29 in a non-leap prior year
+        return datetime.date(y - 1, m, d - 1).isoformat()
 
 
-def activity_window(launched: str | None, decayed: str | None, status: str, *, now: str) -> tuple[str, str]:
-    end = decayed[:10] if decayed else now[:10]
+def activity_window(
+    launched: str | None, decayed: str | None, status: str, *, now: str
+) -> tuple[str, str]:
+    # An alive sat gets a recent window (near now); a decayed one ends at decay.
+    end = now[:10] if (status.lower() == "alive" or not decayed) else decayed[:10]
     start = _year_before(end)
     if launched and launched[:10] > start:
         start = launched[:10]
@@ -34,6 +45,8 @@ def activity_window(launched: str | None, decayed: str | None, status: str, *, n
 
 
 def modal_length(frames: list[bytes]) -> tuple[int, float]:
+    if not frames:
+        return 0, 0.0
     counts = collections.Counter(len(f) for f in frames)
     modal, n = counts.most_common(1)[0]
     return modal, n / len(frames)
