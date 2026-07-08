@@ -1,17 +1,17 @@
-"""Mine the TRUE field layout of a canonical .ksy — the training labels.
+"""Mine the TRUE field layout of a frame from the FULL canonical .ksy.
 
-Two independent sources, zipped by leaf name:
-  * byte spans  — from a ksc --debug parse of a real frame (exact, handles
-                  process:/str/sub-types transparently; spec §5).
-  * field types — from a static walk of the .ksy seq/types (gives signedness
-                  and enum-presence, which --debug offsets do not carry).
-
-Restricted to the flat-beacon target class (structure.is_flat_beacon), so
-the two orderings align one-to-one.
+Parses one real frame in ksc --debug mode and walks the parsed object in
+parallel with the declared seq, following the object's ACTUAL switch/sub-type
+selections. This handles switched/transport-framed decoders (the common case)
+by labeling exactly the fields Kaitai read for that frame — the transport
+header + discriminator + the selected frame-type case. Byte spans come from
+the object's `_debug`; signedness/enum come from the declared type of the
+field actually taken.
 """
 from __future__ import annotations
 
 import io
+import re
 
 from kaitaistruct import KaitaiStream, KaitaiStruct
 from ruamel.yaml import YAML
@@ -19,79 +19,61 @@ from ruamel.yaml import YAML
 from satnogs_decoder.infer.layout import FieldSpan, Layout
 from satnogs_decoder.shared.kaitai import compile_ksy
 
+_SIGNED = re.compile(r"^s[1248](le|be)?$")
 
-def _leaf_spans(obj: object, prefix: str, out: list[tuple[str, int, int]]) -> None:
-    """Walk a --debug-parsed object, emitting (dotted_name, start, end) per scalar leaf."""
+
+def _cap(t: str) -> str:
+    return "".join(p.capitalize() for p in t.split("_"))
+
+
+def _resolve_type(child: object, ftype: object, cases_seen: list[str]) -> str | None:
+    """Map a parsed sub-object to its declared .ksy type name.
+
+    For a plain user-type field ftype is the type-name string. For a switch,
+    ftype is a {switch-on, cases} dict; the selected case is identified by
+    matching the sub-object's generated class name to the capitalized case
+    type name.
+    """
+    if isinstance(ftype, str):
+        return ftype
+    if isinstance(ftype, dict):
+        cls_name = type(child).__name__
+        for tname in ftype.get("cases", {}).values():
+            if _cap(tname) == cls_name:
+                return tname
+    return None
+
+
+def _walk(obj: object, seq: list, types: dict, prefix: str,
+          out: "list[tuple[str, str, bool, int, int]]") -> None:
     debug = getattr(obj, "_debug", {}) or {}
-    for name, span in debug.items():
-        if name.startswith("_"):
-            continue
-        child = getattr(obj, name, None)
-        dotted = f"{prefix}{name}"
-        if isinstance(child, KaitaiStruct):
-            _leaf_spans(child, dotted + ".", out)
-        else:
-            out.append((dotted, int(span["start"]), int(span["end"])))
-
-
-def debug_leaf_spans(
-    ksy_text: str, frame: bytes, *, import_dirs: list[str] | None = None
-) -> list[tuple[str, int, int]]:
-    cls = compile_ksy(ksy_text, import_dirs=import_dirs, debug=True)
-    obj = cls(KaitaiStream(io.BytesIO(frame)))
-    # ksc --debug mode does NOT auto-read (verified by the Task-0 spike):
-    # __init__ only sets up _io/_debug; _read() must be called explicitly, or
-    # _debug stays empty and every field attribute is missing. Sub-type _read()
-    # is invoked by the parent's _read(), so one top-level call populates all.
-    obj._read()
-    out: list[tuple[str, int, int]] = []
-    _leaf_spans(obj, "", out)
-    return out
-
-
-def _walk_declared(
-    seq: list, types: dict, prefix: str, out: list[tuple[str, str, bool]]
-) -> None:
     for f in seq:
         if not isinstance(f, dict) or "id" not in f:
             continue
+        fid = f["id"]
+        span = debug.get(fid)
+        child = getattr(obj, fid, None)
         ftype = f.get("type")
-        dotted = f"{prefix}{f['id']}"
-        if isinstance(ftype, str) and ftype in types:
-            _walk_declared(types[ftype].get("seq", []), types, dotted + ".", out)
-        else:
-            out.append((dotted, ftype or "", "enum" in f))
+        if isinstance(child, KaitaiStruct):
+            tname = _resolve_type(child, ftype, [])
+            sub = types.get(tname) if tname else None
+            sub_seq = sub.get("seq", []) if isinstance(sub, dict) else []
+            _walk(child, sub_seq, types, f"{prefix}{fid}.", out)
+        elif span is not None:  # a scalar/str/contents leaf actually read
+            t = ftype if isinstance(ftype, str) else ""
+            out.append((f"{prefix}{fid}", t, "enum" in f,
+                        int(span["start"]), int(span["end"])))
 
 
-def declared_leaves(ksy_text: str) -> list[tuple[str, str, bool]]:
+def extract_layout(ksy_text: str, frame: bytes, *, import_dirs: list[str] | None = None) -> Layout:
+    cls = compile_ksy(ksy_text, import_dirs=import_dirs, debug=True)
+    obj = cls(KaitaiStream(io.BytesIO(frame)))
+    obj._read()  # --debug mode has no auto-read
     doc = YAML(typ="safe").load(io.StringIO(ksy_text))
-    out: list[tuple[str, str, bool]] = []
-    _walk_declared(doc.get("seq", []), doc.get("types") or {}, "", out)
-    return out
-
-
-def extract_layout(
-    ksy_text: str, frame: bytes, *, import_dirs: list[str] | None = None
-) -> Layout:
-    spans = debug_leaf_spans(ksy_text, frame, import_dirs=import_dirs)
-    decls = {name: (t, e) for name, t, e in declared_leaves(ksy_text)}
-    # The two leaf sources must align one-to-one (guaranteed for the flat-beacon
-    # class). A span whose name is absent from the declared seq means the two
-    # walkers diverged — fail LOUDLY rather than emit a plausible-but-wrong
-    # label (this is the ground-truth label miner; a silent bad label is worse
-    # than a crash).
-    missing = [name for name, _, _ in spans if name not in decls]
-    if missing:
-        raise ValueError(
-            f"debug spans reference leaves absent from the declared seq "
-            f"(name divergence — labels untrustworthy): {missing}"
-        )
-    layout: Layout = []
-    for name, start, end in spans:
-        ftype, has_enum = decls[name]
-        signed = bool(ftype) and ftype[0] == "s"
-        layout.append(FieldSpan(
-            start=start, end=end, width=end - start,
-            signed=signed, is_enum=has_enum, name=name,
-        ))
-    return layout
+    out: "list[tuple[str, str, bool, int, int]]" = []
+    _walk(obj, doc.get("seq", []), doc.get("types") or {}, "", out)
+    return [
+        FieldSpan(start=s, end=e, width=e - s,
+                  signed=bool(_SIGNED.match(t)), is_enum=en, name=name)
+        for name, t, en, s, e in out
+    ]
