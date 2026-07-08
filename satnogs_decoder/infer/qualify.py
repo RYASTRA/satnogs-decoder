@@ -18,6 +18,7 @@ from satnogs_decoder.infer.layout import Layout
 DOMINANCE_MIN = 0.80
 MIN_LEN = 8
 MIN_FRAMES = 30
+COVERAGE_MIN = 0.85
 
 
 def _year_before(iso_end: str) -> str:
@@ -70,4 +71,12 @@ def qualify(ksy_text: str, frames: list[bytes], *, import_dirs: list[str] | None
         return None, f"label extraction failed: {e}"
     if not layout:
         return None, "empty layout"
+    # Coverage gate: the .ksy parse must STRUCTURE most of the frame. A switched
+    # decoder can read only the header + a minimal case, leaving most bytes
+    # unmodeled -> those positions have no ground-truth layout, so labeling them
+    # as "no boundary" would be wrong. Require the parse to reach >= COVERAGE_MIN
+    # of the modal frame, else drop (untrustworthy labels).
+    covered = max(f.end for f in layout)
+    if covered < COVERAGE_MIN * modal:
+        return None, f"layout covers only {covered}/{modal}B ({covered / modal:.0%} < {COVERAGE_MIN:.0%})"
     return layout, ""
