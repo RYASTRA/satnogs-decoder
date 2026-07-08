@@ -26,7 +26,7 @@ def _cap(t: str) -> str:
     return "".join(p.capitalize() for p in t.split("_"))
 
 
-def _resolve_type(child: object, ftype: object, cases_seen: list[str]) -> str | None:
+def _resolve_type(child: object, ftype: object) -> str | None:
     """Map a parsed sub-object to its declared .ksy type name.
 
     For a plain user-type field ftype is the type-name string. For a switch,
@@ -54,10 +54,21 @@ def _walk(obj: object, seq: list, types: dict, prefix: str,
         span = debug.get(fid)
         child = getattr(obj, fid, None)
         ftype = f.get("type")
+        if isinstance(child, list):
+            # a repeat/array field has no fixed layout; a supposedly-flat case
+            # must not contain one -> fail loud rather than emit a bogus span.
+            raise ValueError(f"unexpected repeat/array field {prefix}{fid!r} in a flat case")
         if isinstance(child, KaitaiStruct):
-            tname = _resolve_type(child, ftype, [])
+            tname = _resolve_type(child, ftype)
             sub = types.get(tname) if tname else None
             sub_seq = sub.get("seq", []) if isinstance(sub, dict) else []
+            if not sub_seq and getattr(child, "_debug", None):
+                # the sub-object read fields we cannot type (unresolved switch
+                # case or imported type) -> labels would be silently incomplete.
+                raise ValueError(
+                    f"cannot resolve declared type of {prefix}{fid!r} "
+                    f"(class {type(child).__name__}); labels would be incomplete"
+                )
             _walk(child, sub_seq, types, f"{prefix}{fid}.", out)
         elif span is not None:  # a scalar/str/contents leaf actually read
             t = ftype if isinstance(ftype, str) else ""

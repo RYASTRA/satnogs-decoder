@@ -41,3 +41,17 @@ def test_str_field_not_signed():
     layout = extract_layout(STR_KSY, b"ABC\xff")
     assert layout[0].name == "call" and layout[0].signed is False and layout[0].width == 3
     assert layout[1].name == "v" and layout[1].signed is True
+
+REPEAT_KSY = "meta: {id: rp, endian: be}\nseq:\n  - {id: n, type: u1}\n  - {id: xs, type: u1, repeat: expr, repeat-expr: n}\n"
+
+@pytest.mark.slow
+def test_repeat_field_raises():
+    with pytest.raises(ValueError, match="repeat"):
+        extract_layout(REPEAT_KSY, bytes([0x02, 0x11, 0x22]))
+
+@pytest.mark.slow
+def test_unresolved_switch_case_raises(monkeypatch):
+    import satnogs_decoder.infer.labels as L
+    monkeypatch.setattr(L, "_resolve_type", lambda child, ftype: None)  # force resolution failure
+    with pytest.raises(ValueError, match="resolve"):
+        extract_layout(SWITCHED, bytes([0x01, 0x11, 0x22, 0xFF]))
