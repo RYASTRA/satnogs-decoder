@@ -19,13 +19,17 @@ def build_training_rows(conn, norads):
             continue
         L = common_length(frames)
         feats = position_features(frames)          # (L, F)
-        true_starts = {f.start for f in layout if f.start < L}
+        # ONE definition of "a field this sat has": in-frame and non-degenerate.
+        # Boundary labels and field rows must derive from the same set.
+        valid = [f for f in layout if f.start < L and f.end > f.start]
+        true_starts = {f.start for f in valid}
         yb.extend(1 if i in true_starts else 0 for i in range(L))
         Xb.append(feats)
-        spans = [(f.start, min(f.end, L)) for f in layout if f.start < L and f.end > f.start]
-        Xf.append(field_features(feats, spans))
-        ys.extend(int(f.signed) for f in layout if f.start < L and f.end > f.start)
-        ye.extend(int(f.is_enum) for f in layout if f.start < L and f.end > f.start)
+        Xf.append(field_features(feats, [(f.start, min(f.end, L)) for f in valid]))
+        ys.extend(int(f.signed) for f in valid)
+        ye.extend(int(f.is_enum) for f in valid)
+    if not Xb:
+        raise ValueError("no usable sats in corpus (all empty or fully filtered)")
     return (
         np.vstack(Xb), np.array(yb),
         np.vstack(Xf), np.array(ys), np.array(ye),
