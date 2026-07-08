@@ -28,3 +28,9 @@ def test_switched_with_flat_case_admitted():
 
 def test_all_variable_rejected():
     assert has_fixed_layout_case(ALL_VARIABLE) is False
+
+def test_malformed_ksy_skipped_not_crash():
+    # non-dict types, non-string field type, and garbage YAML -> False, never raise
+    assert has_fixed_layout_case("meta: {id: x}\ntypes: [not, a, dict]\nseq: []") is False
+    assert has_fixed_layout_case(": : bad : :") is False
+    assert has_fixed_layout_case("meta: {id: x}\nseq:\n  - {id: a, type: [1, 2]}") is False

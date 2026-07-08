@@ -55,14 +55,19 @@ def _seq_is_flat(seq: object, types: dict, seen: frozenset) -> bool:
 
 
 def has_fixed_layout_case(ksy_text: str) -> bool:
+    # Batch pre-filter over external canonical .ksy in an unattended loop: any
+    # malformed/odd input is SKIPPED (return False), never allowed to crash the
+    # discovery of the other ~160 candidates.
     try:
         doc = YAML(typ="safe").load(io.StringIO(ksy_text))
-    except Exception:  # noqa: BLE001
+        if not isinstance(doc, dict):
+            return False
+        types = doc.get("types") or {}
+        if not isinstance(types, dict):
+            return False
+        if _seq_is_flat(doc.get("seq"), types, frozenset()):
+            return True
+        return any(_seq_is_flat(t.get("seq"), types, frozenset()) for t in types.values()
+                   if isinstance(t, dict))
+    except Exception:  # noqa: BLE001 — a bad candidate is skipped, not fatal
         return False
-    if not isinstance(doc, dict):
-        return False
-    types = doc.get("types") or {}
-    if _seq_is_flat(doc.get("seq"), types, frozenset()):
-        return True
-    return any(_seq_is_flat(t.get("seq"), types, frozenset()) for t in types.values()
-               if isinstance(t, dict))
