@@ -13,8 +13,12 @@ import numpy as np
 from satnogs_decoder.infer.layout import Layout
 
 
+def _byte_fields(layout: Layout) -> Layout:
+    return [f for f in layout if f.end > f.start]
+
+
 def _starts(layout: Layout) -> set[int]:
-    return {f.start for f in layout}
+    return {f.start for f in _byte_fields(layout)}
 
 
 def boundary_prf(true: Layout, pred: Layout) -> tuple[float, float, float]:
@@ -29,16 +33,16 @@ def boundary_prf(true: Layout, pred: Layout) -> tuple[float, float, float]:
 
 
 def width_accuracy(true: Layout, pred: Layout) -> float:
-    tw = {f.start: f.width for f in true}
-    hits = [f for f in pred if f.start in tw]
+    tw = {f.start: f.width for f in _byte_fields(true)}
+    hits = [f for f in _byte_fields(pred) if f.start in tw]
     if not hits:
         return 0.0
     return sum(1 for f in hits if f.width == tw[f.start]) / len(hits)
 
 
 def sign_accuracy(true: Layout, pred: Layout) -> float:
-    ts = {f.start: f.signed for f in true}
-    hits = [f for f in pred if f.start in ts]
+    ts = {f.start: f.signed for f in _byte_fields(true)}
+    hits = [f for f in _byte_fields(pred) if f.start in ts]
     if not hits:
         return 0.0
     return sum(1 for f in hits if f.signed == ts[f.start]) / len(hits)

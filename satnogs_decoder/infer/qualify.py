@@ -12,7 +12,7 @@ from __future__ import annotations
 import collections
 import datetime
 
-from satnogs_decoder.infer.labels import extract_layout
+from satnogs_decoder.infer.labels import compile_labeler
 from satnogs_decoder.infer.layout import Layout
 
 DOMINANCE_MIN = 0.80
@@ -53,24 +53,72 @@ def modal_length(frames: list[bytes]) -> tuple[int, float]:
     return modal, n / len(frames)
 
 
-def qualify(ksy_text: str, frames: list[bytes], *, import_dirs: list[str] | None = None
-            ) -> tuple[Layout | None, str]:
+def _layout_key(layout: Layout) -> tuple[tuple[int, int, bool, bool], ...]:
+    return tuple((f.start, f.end, f.signed, f.is_enum) for f in layout)
+
+
+def qualify_frames(
+    ksy_text: str,
+    frames: list[bytes],
+    *,
+    import_dirs: list[str] | None = None,
+) -> tuple[Layout | None, list[bytes], str]:
+    """Return a dominant fixed-layout case and frames that match it.
+
+    Same byte length is not enough: a satellite can emit multiple frame types
+    with identical lengths. We require the canonical parser to produce the same
+    byte-level layout for a dominant subset of modal-length frames, then train
+    only on that subset.
+    """
     if not frames:
-        return None, "no frames"
+        return None, [], "no frames"
     modal, frac = modal_length(frames)
     at_modal = [f for f in frames if len(f) == modal]
     if frac < DOMINANCE_MIN:
-        return None, f"no dominant length (modal {modal} at {frac:.0%} < {DOMINANCE_MIN:.0%})"
+        return None, [], (
+            f"no dominant length (modal {modal} at {frac:.0%} < {DOMINANCE_MIN:.0%})"
+        )
     if modal < MIN_LEN:
-        return None, f"modal length {modal} too short (< {MIN_LEN})"
+        return None, [], f"modal length {modal} too short (< {MIN_LEN})"
     if len(at_modal) < MIN_FRAMES:
-        return None, f"only {len(at_modal)} frames at modal length (< {MIN_FRAMES})"
+        return None, [], f"only {len(at_modal)} frames at modal length (< {MIN_FRAMES})"
     try:
-        layout = extract_layout(ksy_text, at_modal[0], import_dirs=import_dirs)
+        label = compile_labeler(ksy_text, import_dirs=import_dirs)
     except Exception as e:  # noqa: BLE001
-        return None, f"label extraction failed: {e}"
-    if not layout:
-        return None, "empty layout"
+        return None, [], f"labeler compile failed: {e}"
+
+    groups: dict[tuple[tuple[int, int, bool, bool], ...], list[bytes]] = {}
+    layouts: dict[tuple[tuple[int, int, bool, bool], ...], Layout] = {}
+    failures = 0
+    for frame in at_modal:
+        try:
+            layout = label(frame)
+        except Exception:  # noqa: BLE001
+            failures += 1
+            continue
+        if not layout:
+            continue
+        key = _layout_key(layout)
+        groups.setdefault(key, []).append(frame)
+        layouts.setdefault(key, layout)
+
+    if not groups:
+        suffix = f" ({failures} parse failures)" if failures else ""
+        return None, [], f"label extraction failed for every modal frame{suffix}"
+
+    key, matching = max(groups.items(), key=lambda item: len(item[1]))
+    layout = layouts[key]
+    layout_frac = len(matching) / len(at_modal)
+    if layout_frac < DOMINANCE_MIN:
+        return None, [], (
+            f"no dominant parsed layout ({len(matching)}/{len(at_modal)} "
+            f"= {layout_frac:.0%} < {DOMINANCE_MIN:.0%}; {failures} parse failures)"
+        )
+    if len(matching) < MIN_FRAMES:
+        return None, [], (
+            f"only {len(matching)} frames match dominant parsed layout (< {MIN_FRAMES})"
+        )
+
     # Coverage gate: the .ksy parse must STRUCTURE most of the frame. A switched
     # decoder can read only the header + a minimal case, leaving most bytes
     # unmodeled -> those positions have no ground-truth layout, so labeling them
@@ -78,5 +126,14 @@ def qualify(ksy_text: str, frames: list[bytes], *, import_dirs: list[str] | None
     # of the modal frame, else drop (untrustworthy labels).
     covered = max(f.end for f in layout)
     if covered < COVERAGE_MIN * modal:
-        return None, f"layout covers only {covered}/{modal}B ({covered / modal:.0%} < {COVERAGE_MIN:.0%})"
-    return layout, ""
+        return None, [], (
+            f"layout covers only {covered}/{modal}B "
+            f"({covered / modal:.0%} < {COVERAGE_MIN:.0%})"
+        )
+    return layout, matching, ""
+
+
+def qualify(ksy_text: str, frames: list[bytes], *, import_dirs: list[str] | None = None
+            ) -> tuple[Layout | None, str]:
+    layout, _, reason = qualify_frames(ksy_text, frames, import_dirs=import_dirs)
+    return layout, reason

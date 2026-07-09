@@ -17,6 +17,8 @@ import joblib
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 
+DEFAULT_BOUNDARY_THRESHOLD = 0.20
+
 
 def field_features(pos_feats: np.ndarray, spans: list[tuple[int, int]]) -> np.ndarray:
     """Pool per-position features into one row per field span.
@@ -40,17 +42,18 @@ def field_features(pos_feats: np.ndarray, spans: list[tuple[int, int]]) -> np.nd
 
 
 class InferModel:
-    def __init__(self) -> None:
+    def __init__(self, *, boundary_threshold: float = DEFAULT_BOUNDARY_THRESHOLD) -> None:
         self._boundary = HistGradientBoostingClassifier(max_depth=4, learning_rate=0.1)
         self._signed = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.1)
         self._enum = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.1)
+        self.boundary_threshold = boundary_threshold
         self._has_field_heads = False
 
     def fit_boundary(self, X: np.ndarray, y: np.ndarray) -> None:
         self._boundary.fit(X, y)
 
     def predict_boundary(self, X: np.ndarray) -> np.ndarray:
-        pred = self._boundary.predict(X)
+        pred = self.predict_boundary_proba(X) >= self.boundary_threshold
         return np.asarray(pred, dtype=int)
 
     def predict_boundary_proba(self, X: np.ndarray) -> np.ndarray:
