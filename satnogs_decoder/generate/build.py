@@ -5,6 +5,7 @@ header IR (headers.py) into one complete `KsySpec`: transport header wrapper
 + frame-type `switch-on` dispatch + scaling instances + one-level nesting +
 enums. This is the crux of `generate`.
 """
+
 from __future__ import annotations
 
 from .schema import FieldSpec, InstanceSpec, Spec, SpecError
@@ -44,12 +45,19 @@ def build_ir(spec: Spec) -> KsySpec:
     if spec.discriminator:
         cases = {("_" if ft.match == "default" else ft.match): ft.id for ft in spec.frame_types}
         payload = KsyField(id="payload", type=KsySwitch(on="kind", cases=cases))
-        top_instances.append(KsyInstance(id="kind", pos=spec.discriminator.pos, type=spec.discriminator.type))
+        top_instances.append(
+            KsyInstance(id="kind", pos=spec.discriminator.pos, type=spec.discriminator.type)
+        )
     else:
         payload = KsyField(id="payload", type=spec.frame_types[0].id)
     return KsySpec(
-        id=spec.id, endian=spec.endian, seq=hdr_seq + [payload],
-        title=spec.title, ks_version=spec.ks_version, doc_ref=spec.doc_ref,
-        types=types, enums=spec.enums or None,
+        id=spec.id,
+        endian=spec.endian,
+        seq=hdr_seq + [payload],
+        title=spec.title,
+        ks_version=spec.ks_version,
+        doc_ref=spec.doc_ref,
+        types=types,
+        enums=spec.enums or None,
         instances=top_instances or None,
     )

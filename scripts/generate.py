@@ -13,6 +13,7 @@ and run against the anchor's live frame corpus (window read from
 ``ValidationReport`` is printed as JSON to stdout. Mirrors
 ``scripts/validate.py`` / ``scripts/build_corpus.py``.
 """
+
 from __future__ import annotations
 
 import argparse

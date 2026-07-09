@@ -30,8 +30,11 @@ def main() -> None:
     ap.add_argument("--out", default=None, metavar="PATH", help="Write .ksy here (default stdout).")
     ap.add_argument("--limit", type=int, default=500)
     ap.add_argument("--endian", default="be", choices=("be", "le"))
-    ap.add_argument("--validate", action="store_true",
-                    help="Compile the inferred decoder and report coverage over the same frames.")
+    ap.add_argument(
+        "--validate",
+        action="store_true",
+        help="Compile the inferred decoder and report coverage over the same frames.",
+    )
     args = ap.parse_args()
 
     frames = fetch_frames(args.norad, start=args.start, end=args.end, limit=args.limit)

@@ -59,6 +59,7 @@ Name disambiguation (two-pass):
   spec always yields the same names — and only touches the NAME half of
   the `:field NAME: path` line; the path is untouched.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field as _dc_field
@@ -105,9 +106,13 @@ def _walk_type(
         else:
             entries.append(_Entry(name=f.id, path=path, segments=list(path_segments)))
     for inst in instances:
-        entries.append(_Entry(
-            name=inst.id, path=f"{prefix}.{inst.id}", segments=list(path_segments),
-        ))
+        entries.append(
+            _Entry(
+                name=inst.id,
+                path=f"{prefix}.{inst.id}",
+                segments=list(path_segments),
+            )
+        )
 
 
 def _disambiguate(entries: "list[_Entry]") -> "list[tuple[str, str]]":
@@ -148,7 +153,9 @@ def _disambiguate(entries: "list[_Entry]") -> "list[tuple[str, str]]":
         depth = 0
         max_depth = max((len(e.segments) for e in group), default=0)
         while len(set(current.values())) < len(group) and depth < max_depth:
-            values_at_depth = [e.segments[depth] if depth < len(e.segments) else None for e in group]
+            values_at_depth = [
+                e.segments[depth] if depth < len(e.segments) else None for e in group
+            ]
             if len(set(values_at_depth)) > 1:
                 for e, v in zip(group, values_at_depth):
                     if v is not None:

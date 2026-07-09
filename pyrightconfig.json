@@ -1,1 +1,6 @@
-{"include": ["satnogs_decoder"], "pythonVersion": "3.14", "typeCheckingMode": "basic"}
+{
+  "include": ["satnogs_decoder"],
+  "exclude": ["docs", "tests", "corpus"],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic"
+}

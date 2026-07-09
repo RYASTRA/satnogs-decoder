@@ -1,4 +1,5 @@
 """Orchestrator: run a Kaitai parser over a frame corpus and produce a ValidationReport."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,8 @@ from satnogs_decoder.shared.reference import decode_reference
 from satnogs_decoder.validate.crosscheck import CrossCheck, cross_check
 from satnogs_decoder.validate.report import Coverage, FieldStat, coverage, field_stats
 
+VALIDATION_REPORT_SCHEMA_VERSION = 2
+
 
 @dataclass
 class ValidationReport:
@@ -15,6 +18,7 @@ class ValidationReport:
     coverage: Coverage
     field_stats: list[FieldStat]
     crosscheck: CrossCheck | None
+    report_schema_version: int = VALIDATION_REPORT_SCHEMA_VERSION
 
 
 def validate(

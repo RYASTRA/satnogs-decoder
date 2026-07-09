@@ -10,6 +10,7 @@ window (``start``/``end``) so unbounded queries are avoided.
 
 The full ``ValidationReport`` is printed as JSON to stdout.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,7 +100,10 @@ def main() -> None:
         end=anchor["end"],
         limit=args.limit,
     )
-    print(f"Fetched {len(frames)} frames for {anchor['name']} (NORAD {anchor['norad']})", file=sys.stderr)
+    print(
+        f"Fetched {len(frames)} frames for {anchor['name']} (NORAD {anchor['norad']})",
+        file=sys.stderr,
+    )
 
     ref_module: str | None = None if args.no_ref else anchor["module"]
 

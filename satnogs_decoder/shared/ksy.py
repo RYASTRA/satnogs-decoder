@@ -8,14 +8,14 @@ from ruamel.yaml.scalarstring import LiteralScalarString as LS
 
 @dataclass
 class KsySwitch:
-    on: str                          # switch-on expression
-    cases: dict                      # {int_or_"_": subtype_name}
+    on: str  # switch-on expression
+    cases: dict  # {int_or_"_": subtype_name}
 
 
 @dataclass
 class KsyField:
     id: str
-    type: "str | KsySwitch"
+    type: "str | KsySwitch | None" = None
     doc: str | None = None
     doc_ref: str | None = None
     enum: str | None = None
@@ -30,8 +30,8 @@ class KsyField:
 @dataclass
 class KsyInstance:
     id: str
-    value: str | None = None        # computed expression  → {value: ...}
-    pos: int | None = None          # OR positional read   → {pos: N, type: ...}
+    value: str | None = None  # computed expression  → {value: ...}
+    pos: int | None = None  # OR positional read   → {pos: N, type: ...}
     type: str | None = None
     enum: str | None = None
     doc: str | None = None
@@ -41,7 +41,9 @@ class KsyInstance:
 
     def __post_init__(self) -> None:
         if self.value is None and self.pos is None:
-            raise ValueError(f"KsyInstance {self.id!r} needs either value= (computed) or pos= (positional)")
+            raise ValueError(
+                f"KsyInstance {self.id!r} needs either value= (computed) or pos= (positional)"
+            )
 
 
 @dataclass
@@ -69,15 +71,19 @@ class KsySpec:
         e: dict = {"id": f.id}
         if isinstance(f.type, KsySwitch):
             e["type"] = {"switch-on": f.type.on, "cases": dict(f.type.cases)}
-        else:
+        elif f.type is not None:
             e["type"] = f.type
         if f.enum:
             e["enum"] = f.enum
-        extra = [x for x in (
-            f"unit={f.unit}" if f.unit else "",
-            f"scale={f.scale}" if f.scale is not None else "",
-            f"offset={f.offset}" if f.offset is not None else "",
-        ) if x]
+        extra = [
+            x
+            for x in (
+                f"unit={f.unit}" if f.unit else "",
+                f"scale={f.scale}" if f.scale is not None else "",
+                f"offset={f.offset}" if f.offset is not None else "",
+            )
+            if x
+        ]
         doc = f.doc
         if extra:  # scale/offset/unit have no native .ksy key; keep them in doc (lossless)
             doc = (doc + " " if doc else "") + "[" + ", ".join(extra) + "]"
@@ -107,9 +113,15 @@ class KsySpec:
                     e["type"] = it.type
             if it.enum:
                 e["enum"] = it.enum
-            extra = [x for x in (f"unit={it.unit}" if it.unit else "",
-                                 f"scale={it.scale}" if it.scale is not None else "",
-                                 f"offset={it.offset}" if it.offset is not None else "") if x]
+            extra = [
+                x
+                for x in (
+                    f"unit={it.unit}" if it.unit else "",
+                    f"scale={it.scale}" if it.scale is not None else "",
+                    f"offset={it.offset}" if it.offset is not None else "",
+                )
+                if x
+            ]
             doc = it.doc
             if extra:
                 doc = (doc + " " if doc else "") + "[" + ", ".join(extra) + "]"
@@ -149,10 +161,7 @@ class KsySpec:
                     types_out[n] = {"seq": [self._field(f) for f in t]}
             out["types"] = types_out
         if self.enums:
-            out["enums"] = {
-                en: {k: DQ(v) for k, v in mp.items()}
-                for en, mp in self.enums.items()
-            }
+            out["enums"] = {en: {k: DQ(v) for k, v in mp.items()} for en, mp in self.enums.items()}
         return out
 
     def to_yaml(self) -> str:

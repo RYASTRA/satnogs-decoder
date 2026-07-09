@@ -9,6 +9,7 @@ with growing backoff.
   Unbounded queries timeout for high-volume satellites (>90 s for ELFIN-A).
   fetch_frames therefore requires explicit `start`/`end` date-window params.
 """
+
 from __future__ import annotations
 
 import os
@@ -92,16 +93,10 @@ def fetch_frames(
         )
 
     sess = session or requests.Session()
-    sess.headers.update(
-        {"User-Agent": USER_AGENT, "Authorization": f"Token {token}"}
-    )
+    sess.headers.update({"User-Agent": USER_AGENT, "Authorization": f"Token {token}"})
 
     frames: list[Frame] = []
-    url: str | None = (
-        f"{DB_API}?satellite={norad}"
-        f"&start={start}&end={end}"
-        f"&format=json"
-    )
+    url: str | None = f"{DB_API}?satellite={norad}&start={start}&end={end}&format=json"
 
     while url:
         resp = _get_with_backoff(sess, url)

@@ -10,6 +10,7 @@ Anchors are read from tests/fixtures/anchors.json.  Each anchor must supply
 fetch_frames can issue a bounded date-window query (unbounded queries time out
 for high-volume satellites).
 """
+
 from __future__ import annotations
 
 import argparse

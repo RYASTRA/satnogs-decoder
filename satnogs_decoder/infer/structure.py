@@ -8,6 +8,7 @@ repeat/size-eos/nested switch) are skipped. Final fixedness is confirmed
 frame-aware in infer.qualify. This is deliberately permissive — over-
 admitting only costs a qualify probe; under-admitting silently loses sats.
 """
+
 from __future__ import annotations
 
 import io
@@ -32,7 +33,7 @@ def _seq_is_flat(seq: object, types: dict, seen: frozenset) -> bool:
         if "contents" in f:
             continue
         ftype = f.get("type")
-        if isinstance(ftype, dict):      # switch inside a candidate seq -> not flat
+        if isinstance(ftype, dict):  # switch inside a candidate seq -> not flat
             return False
         if ftype is None:
             if isinstance(f.get("size"), int):
@@ -44,7 +45,7 @@ def _seq_is_flat(seq: object, types: dict, seen: frozenset) -> bool:
             if isinstance(f.get("size"), int):
                 continue
             return False
-        if ftype in types:               # fixed sub-type: recurse
+        if ftype in types:  # fixed sub-type: recurse
             if ftype in seen:
                 return False
             if not _seq_is_flat(types[ftype].get("seq"), types, seen | {ftype}):
@@ -67,7 +68,10 @@ def has_fixed_layout_case(ksy_text: str) -> bool:
             return False
         if _seq_is_flat(doc.get("seq"), types, frozenset()):
             return True
-        return any(_seq_is_flat(t.get("seq"), types, frozenset()) for t in types.values()
-                   if isinstance(t, dict))
+        return any(
+            _seq_is_flat(t.get("seq"), types, frozenset())
+            for t in types.values()
+            if isinstance(t, dict)
+        )
     except Exception:  # noqa: BLE001 — a bad candidate is skipped, not fatal
         return False

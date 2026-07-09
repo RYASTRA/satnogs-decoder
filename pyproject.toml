@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.4", "pyright>=1.1"]
+dev = ["pytest>=8.0", "ruff>=0.4", "pyright>=1.1", "pylint>=3.3"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -34,4 +34,13 @@ addopts = "-m 'not slow and not network'"
 
 [tool.ruff]
 line-length = 100
-extend-exclude = ["tests/fixtures/generated"]  # ksc-generated parsers — do not lint
+extend-exclude = ["corpus", "docs", "tests"]
+
+[tool.pylint.main]
+ignore = ["corpus", "docs", "tests"]
+ignore-paths = ["^corpus/.*", "^docs/.*", "^tests/.*"]
+py-version = "3.14"
+
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["F", "E"]

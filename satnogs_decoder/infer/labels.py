@@ -8,6 +8,7 @@ header + discriminator + the selected frame-type case. Byte spans come from
 the object's `_debug`; signedness/enum come from the declared type of the
 field actually taken.
 """
+
 from __future__ import annotations
 
 import io
@@ -105,8 +106,15 @@ def _walk(
             _walk(child, sub_seq, types, f"{prefix}{fid}.", out, base=child_base)
         elif span is not None:  # a scalar/str/contents leaf actually read
             t = ftype if isinstance(ftype, str) else ""
-            out.append((f"{prefix}{fid}", t, "enum" in f,
-                        base + int(span["start"]), base + int(span["end"])))
+            out.append(
+                (
+                    f"{prefix}{fid}",
+                    t,
+                    "enum" in f,
+                    base + int(span["start"]),
+                    base + int(span["end"]),
+                )
+            )
 
 
 def compile_labeler(
@@ -121,8 +129,9 @@ def compile_labeler(
         out: "list[tuple[str, str, bool, int, int]]" = []
         _walk(obj, doc.get("seq", []), doc.get("types") or {}, "", out)
         return [
-            FieldSpan(start=s, end=e, width=e - s,
-                      signed=bool(_SIGNED.match(t)), is_enum=en, name=name)
+            FieldSpan(
+                start=s, end=e, width=e - s, signed=bool(_SIGNED.match(t)), is_enum=en, name=name
+            )
             for name, t, en, s, e in out
             if e > s
         ]

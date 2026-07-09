@@ -7,6 +7,7 @@ monotonicity (counters/timestamps), and correlation with the neighbouring
 byte (multi-byte field grouping). Position itself is included so the model
 can learn header-region priors.
 """
+
 from __future__ import annotations
 
 import collections
@@ -14,10 +15,19 @@ import collections
 import numpy as np
 
 FEATURE_NAMES: list[str] = [
-    "pos_abs", "pos_frac",
-    "mean", "std", "entropy", "distinct_frac",
-    "is_constant", "frac_zero", "frac_ff", "high_bit_frac",
-    "monotonic", "corr_prev", "corr_next",
+    "pos_abs",
+    "pos_frac",
+    "mean",
+    "std",
+    "entropy",
+    "distinct_frac",
+    "is_constant",
+    "frac_zero",
+    "frac_ff",
+    "high_bit_frac",
+    "monotonic",
+    "corr_prev",
+    "corr_next",
 ]
 
 
@@ -56,15 +66,21 @@ def position_features(frames: list[bytes]) -> np.ndarray:
         prev = mat[:, i - 1] if i > 0 else col
         nxt = mat[:, i + 1] if i + 1 < L else col
         distinct = len(np.unique(col))
-        rows.append([
-            float(i), i / max(L - 1, 1),
-            float(col.mean()), float(col.std()),
-            _entropy(col), distinct / max(n, 1),
-            1.0 if distinct == 1 else 0.0,
-            float((col == 0).mean()), float((col == 0xFF).mean()),
-            float((col >= 0x80).mean()),
-            _monotonic(col),
-            _corr(col.astype(float), prev.astype(float)) if i > 0 else 0.0,
-            _corr(col.astype(float), nxt.astype(float)) if i + 1 < L else 0.0,
-        ])
+        rows.append(
+            [
+                float(i),
+                i / max(L - 1, 1),
+                float(col.mean()),
+                float(col.std()),
+                _entropy(col),
+                distinct / max(n, 1),
+                1.0 if distinct == 1 else 0.0,
+                float((col == 0).mean()),
+                float((col == 0xFF).mean()),
+                float((col >= 0x80).mean()),
+                _monotonic(col),
+                _corr(col.astype(float), prev.astype(float)) if i > 0 else 0.0,
+                _corr(col.astype(float), nxt.astype(float)) if i + 1 < L else 0.0,
+            ]
+        )
     return np.array(rows, dtype=np.float64)

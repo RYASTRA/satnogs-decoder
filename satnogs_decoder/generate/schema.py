@@ -4,6 +4,7 @@ Parses and validates a hand-authored field-table YAML spec (the input to
 `generate.build.build_ir`) into typed, frozen dataclasses. Every validation
 failure raises `SpecError` with the offending token embedded in the message.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -13,7 +14,7 @@ from dataclasses import dataclass
 from ruamel.yaml import YAML
 
 _INT_RE = re.compile(r"^(u[1248]|s[1248]|f[48])(le|be)?$")
-_BIT_RE = re.compile(r"^b([1-9]|[1-5][0-9]|6[0-4])$")   # b1..b64
+_BIT_RE = re.compile(r"^b([1-9]|[1-5][0-9]|6[0-4])$")  # b1..b64
 _UINT_RE = re.compile(r"^u[1248](le|be)?$")
 
 # Exclusive upper bound of the value range a discriminator type can hold,
@@ -95,7 +96,9 @@ def _load_yaml(source: "str | pathlib.Path") -> dict:
     return data
 
 
-def _parse_fields(raw_seq: "list | None", where: str, known_types: set[str]) -> "tuple[FieldSpec, ...]":
+def _parse_fields(
+    raw_seq: "list | None", where: str, known_types: set[str]
+) -> "tuple[FieldSpec, ...]":
     raw_seq = raw_seq or []
     out: list[FieldSpec] = []
     seen: set[str] = set()
@@ -112,10 +115,15 @@ def _parse_fields(raw_seq: "list | None", where: str, known_types: set[str]) -> 
         if not _known(ftype, known_types):
             raise SpecError(f"{where}: field {fid!r} has unknown type {ftype!r}")
         fenum = raw.get("enum")
-        out.append(FieldSpec(
-            id=fid, type=ftype, enum=fenum,
-            doc=raw.get("doc"), doc_ref=raw.get("doc-ref") or raw.get("doc_ref"),
-        ))
+        out.append(
+            FieldSpec(
+                id=fid,
+                type=ftype,
+                enum=fenum,
+                doc=raw.get("doc"),
+                doc_ref=raw.get("doc-ref") or raw.get("doc_ref"),
+            )
+        )
     return tuple(out)
 
 
@@ -134,11 +142,18 @@ def _parse_instances(raw_insts: "list | None", where: str) -> "tuple[InstanceSpe
             raise SpecError(f"{where}: instance {iid!r} missing required key 'value'")
         ivalue = raw["value"]
         if not isinstance(ivalue, str) or not ivalue:
-            raise SpecError(f"{where}: instance {iid!r} 'value' must be a non-empty string, got {ivalue!r}")
-        out.append(InstanceSpec(
-            id=iid, value=raw["value"], unit=raw.get("unit"),
-            enum=raw.get("enum"), doc=raw.get("doc"),
-        ))
+            raise SpecError(
+                f"{where}: instance {iid!r} 'value' must be a non-empty string, got {ivalue!r}"
+            )
+        out.append(
+            InstanceSpec(
+                id=iid,
+                value=raw["value"],
+                unit=raw.get("unit"),
+                enum=raw.get("enum"),
+                doc=raw.get("doc"),
+            )
+        )
     return tuple(out)
 
 
@@ -219,7 +234,9 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
         _check_enum_refs(fields, enums, where)
         for f in fields:
             if f.type in known_type_names and f.type not in types:
-                raise SpecError(f"{where}: field {f.id!r} references undeclared sub-type {f.type!r}")
+                raise SpecError(
+                    f"{where}: field {f.id!r} references undeclared sub-type {f.type!r}"
+                )
         insts = _parse_instances(raw.get("instances"), where)
         match = raw.get("match", "default")
         if match in seen_matches:
@@ -266,9 +283,14 @@ def load_spec(source: "str | pathlib.Path") -> Spec:
         )
 
     return Spec(
-        id=spec_id, endian=endian, transport=transport,
-        frame_types=tuple(frame_types), types=types, enums=enums,
+        id=spec_id,
+        endian=endian,
+        transport=transport,
+        frame_types=tuple(frame_types),
+        types=types,
+        enums=enums,
         discriminator=discriminator,
-        title=meta.get("title"), ks_version=meta.get("ks-version") or meta.get("ks_version"),
+        title=meta.get("title"),
+        ks_version=meta.get("ks-version") or meta.get("ks_version"),
         doc_ref=data.get("doc-ref") or data.get("doc_ref"),
     )

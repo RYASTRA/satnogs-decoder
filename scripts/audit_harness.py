@@ -8,6 +8,7 @@ breakdown of every failure. The installed `satnogs-decoders` package provides th
 
 Run in-container:  docker compose run --rm app python scripts/audit_harness.py
 """
+
 from __future__ import annotations
 import json
 import pathlib
@@ -19,8 +20,10 @@ import requests
 
 from satnogs_decoder.shared.kaitai import compile_ksy
 
-TREE = ("https://gitlab.com/api/v4/projects/"
-        "librespacefoundation%2Fsatnogs%2Fsatnogs-decoders/repository/tree")
+TREE = (
+    "https://gitlab.com/api/v4/projects/"
+    "librespacefoundation%2Fsatnogs%2Fsatnogs-decoders/repository/tree"
+)
 RAW = "https://gitlab.com/librespacefoundation/satnogs/satnogs-decoders/-/raw/master/ksy/"
 
 

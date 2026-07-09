@@ -1,7 +1,11 @@
 # scripts/find_candidates.py — THROWAWAY. Run as a MODULE (imports scripts.audit_harness):
 # docker compose run --rm app python -m scripts.find_candidates > tests/infer/corpus_sats.json
 from __future__ import annotations
-import json, re, sys
+
+import json
+import re
+import sys
+
 import requests
 from scripts.audit_harness import list_ksy, RAW
 from satnogs_decoder.infer.structure import has_fixed_layout_case
@@ -21,7 +25,9 @@ def sat_index():
         nid = s.get("norad_cat_id")
         if not nid:
             continue
-        keys = [_norm(s.get("name"))] + [_norm(x) for x in re.split(r"[\n,;]+", s.get("names") or "") if x.strip()]
+        keys = [_norm(s.get("name"))] + [
+            _norm(x) for x in re.split(r"[\n,;]+", s.get("names") or "") if x.strip()
+        ]
         for k in keys:
             if k:
                 recs.setdefault(k, s)
@@ -46,12 +52,22 @@ def main() -> int:
             n_nomap += 1
             continue
         start, end = activity_window(
-            (s.get("launched") or "")[:10] or None,
-            s.get("decayed"), s.get("status") or "", now=NOW)
-        out.append({"norad": int(s["norad_cat_id"]), "name": s.get("name") or module,
-                    "module": module, "start": start, "end": end})
+            (s.get("launched") or "")[:10] or None, s.get("decayed"), s.get("status") or "", now=NOW
+        )
+        out.append(
+            {
+                "norad": int(s["norad_cat_id"]),
+                "name": s.get("name") or module,
+                "module": module,
+                "start": start,
+                "end": end,
+            }
+        )
     print(json.dumps(out, indent=2))
-    print(f"candidates={len(out)} fixed_layout_case={n_flat} no_norad={n_nomap} of {len(names)}", file=sys.stderr)
+    print(
+        f"candidates={len(out)} fixed_layout_case={n_flat} no_norad={n_nomap} of {len(names)}",
+        file=sys.stderr,
+    )
     return 0
 
 

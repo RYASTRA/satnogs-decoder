@@ -3,6 +3,7 @@
 Pipeline: `load_spec` (schema.py) -> `build_ir` (build.py) -> attach the
 `:field` dashboard doc-block (fields.py) -> `KsySpec.to_yaml()`.
 """
+
 from __future__ import annotations
 
 import pathlib

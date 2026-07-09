@@ -7,6 +7,7 @@ Note: the SatNOGS DB telemetry endpoint's latency scales with the matching-frame
 count, and high-volume sats (ELFIN-A ~8M frames, GRBAlpha) time out on wide/unbounded
 queries. So we bound to a NARROW historical window when the sat was active.
 """
+
 from __future__ import annotations
 import os
 import sys
@@ -16,10 +17,10 @@ import requests
 
 load_dotenv()  # compose env_file already injects these; fallback for the mounted .env
 TOKEN = os.getenv("satnogs_db_api_key")
-NORAD = 47959           # GRBAlpha — very active in 2022
-MODULE = "grbalpha"     # satnogsdecoders.<MODULE>; class = MODULE.capitalize()
+NORAD = 47959  # GRBAlpha — very active in 2022
+MODULE = "grbalpha"  # satnogsdecoders.<MODULE>; class = MODULE.capitalize()
 START = "2022-06-15T00:00:00Z"
-END = "2022-06-15T06:00:00Z"   # 6-hour window -> small, fast result set
+END = "2022-06-15T06:00:00Z"  # 6-hour window -> small, fast result set
 UA = "satnogs-decoder-dev (research; gitlab.com/RYASTRA/satnogs-decoder)"
 
 
@@ -28,8 +29,10 @@ def main() -> int:
         print("NO-GO: satnogs_db_api_key not present in the container environment")
         return 1
 
-    url = (f"https://db.satnogs.org/api/telemetry/"
-           f"?satellite={NORAD}&start={START}&end={END}&format=json")
+    url = (
+        f"https://db.satnogs.org/api/telemetry/"
+        f"?satellite={NORAD}&start={START}&end={END}&format=json"
+    )
     r = requests.get(url, headers={"Authorization": f"Token {TOKEN}", "User-Agent": UA}, timeout=60)
     print("API status:", r.status_code)
     if r.status_code != 200:

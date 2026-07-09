@@ -1,4 +1,5 @@
 """Coverage, decode-rate, and field-range statistics over ParseResult lists."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

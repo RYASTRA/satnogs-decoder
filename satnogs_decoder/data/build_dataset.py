@@ -3,6 +3,7 @@
 Assembles raw telemetry frames (optionally paired with reference-decoded
 ground-truth JSON) into a Hugging Face ``datasets.Dataset``.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,7 @@ def _bytes_safe_json(d: dict) -> str | None:
             d,
             default=lambda b: b.hex() if isinstance(b, (bytes, bytearray)) else str(b),
         )
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
