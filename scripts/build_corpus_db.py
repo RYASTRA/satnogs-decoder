@@ -42,9 +42,7 @@ def fetch_ksy_source(module: str) -> KsySource:
         payload = resp.json()
         text = base64.b64decode(payload["content"]).decode()
         revision = (
-            payload.get("last_commit_id")
-            or payload.get("commit_id")
-            or payload.get("blob_id")
+            payload.get("last_commit_id") or payload.get("commit_id") or payload.get("blob_id")
         )
     except Exception:  # noqa: BLE001
         text = requests.get(raw_url, timeout=60).text

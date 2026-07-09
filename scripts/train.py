@@ -20,15 +20,14 @@ def main() -> int:
     if not norads:
         print("empty corpus — run `python -m scripts.build_corpus_db` first", file=sys.stderr)
         return 1
-    Xb, yb, Xf, ys, ye, Xw, yw = build_training_rows(conn, norads, include_width=True)
+    Xb, yb, Xf, ys, ye = build_training_rows(conn, norads)
     print(
         f"training rows: {Xb.shape[0]} positions ({yb.mean():.2%} boundaries), "
-        f"{Xf.shape[0]} fields ({ys.mean():.2%} signed, {ye.mean():.2%} enum), "
-        f"{len(set(yw.tolist()))} width classes"
+        f"{Xf.shape[0]} fields ({ys.mean():.2%} signed, {ye.mean():.2%} enum)"
     )
     model = InferModel()
     model.fit_boundary(Xb, yb)
-    model.fit_field(Xf, ys, ye, X_width=Xw, y_width=yw)
+    model.fit_field(Xf, ys, ye)
     model.save(MODEL_DIR)
     print(f"frozen model -> {MODEL_DIR}")
     return 0

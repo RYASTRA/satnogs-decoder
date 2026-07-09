@@ -6,6 +6,7 @@ stable JSON that can be diffed across runs and attached to model artifacts.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from typing import Any
@@ -30,11 +31,13 @@ def _sort_per_sat(
 def model_artifacts(model_dir: str | pathlib.Path) -> dict[str, Any]:
     path = pathlib.Path(model_dir)
     artifacts = {}
-    for name in ("boundary.joblib", "signed.joblib", "enum.joblib", "width.joblib"):
+    for name in ("boundary.joblib", "signed.joblib", "enum.joblib"):
         artifact = path / name
+        digest = hashlib.sha256(artifact.read_bytes()).hexdigest() if artifact.exists() else None
         artifacts[name] = {
             "present": artifact.exists(),
             "bytes": artifact.stat().st_size if artifact.exists() else 0,
+            "sha256": digest,
         }
     return {"model_dir": str(path), "artifacts": artifacts}
 

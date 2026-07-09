@@ -119,9 +119,18 @@ def _get_with_backoff(
     """GET *url* with retry + growing backoff on 429/5xx."""
     delay = 10.0
     last_resp: requests.Response | None = None
+    last_exc: requests.RequestException | None = None
 
-    for _ in range(retries):
-        resp = sess.get(url, timeout=30)
+    for attempt in range(retries):
+        try:
+            resp = sess.get(url, timeout=30)
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt + 1 == retries:
+                raise
+            time.sleep(delay)
+            delay *= 2
+            continue
         last_resp = resp
 
         if resp.status_code == 429:
@@ -138,7 +147,9 @@ def _get_with_backoff(
         resp.raise_for_status()
         return resp
 
-    # All retries exhausted — surface the last response's error.
-    assert last_resp is not None
-    last_resp.raise_for_status()
-    return last_resp  # unreachable, but satisfies type checkers
+    # All retries exhausted — surface the last response or request error.
+    if last_resp is not None:
+        last_resp.raise_for_status()
+        return last_resp  # unreachable, but satisfies type checkers
+    assert last_exc is not None
+    raise last_exc

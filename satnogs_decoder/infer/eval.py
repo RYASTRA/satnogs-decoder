@@ -170,10 +170,10 @@ def evaluate_holdout(
         train_ns = [n for n in norads if n != held]
         if not train_ns:
             continue
-        Xb, yb, Xf, ys, ye, Xw, yw = build_training_rows(conn, train_ns, include_width=True)
+        Xb, yb, Xf, ys, ye = build_training_rows(conn, train_ns)
         model = model_factory()
         model.fit_boundary(Xb, yb)
-        model.fit_field(Xf, ys, ye, X_width=Xw, y_width=yw)
+        model.fit_field(Xf, ys, ye)
 
         frames = corpus.query_frames(conn, held)
         if max_frames is not None:
