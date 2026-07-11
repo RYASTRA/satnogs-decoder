@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: satnogs-decoder         # explicit image name (else compose derives <project>-<service> = satnogs-decoder-app)
     env_file: .env                 # your keys (satnogs_db_api_key, HUGGING_FACE_HUB_TOKEN, ...) — never baked into the image
     working_dir: /app
     volumes:
