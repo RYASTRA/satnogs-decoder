@@ -17,4 +17,4 @@ jobs:
       - name: Mirror to GitLab
         uses: pixta-dev/repository-mirroring-action@v1
         with:
-          target_repo_url: https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/RYASTRA/satnogs-decoder.git
+          target_repo_url: https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/RYSATNOGS/satnogs-decoder.git
