@@ -42,5 +42,4 @@ ignore-paths = ["^corpus/.*", "^docs/.*", "^tests/.*"]
 py-version = "3.14"
 
 [tool.pylint.messages_control]
-disable = ["all"]
-enable = ["F", "E"]
+disable = ["too-few-public-methods"]
