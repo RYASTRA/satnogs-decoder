@@ -10,17 +10,20 @@ wide, signed or not, scaled by what. This repo is a workbench around exactly tha
 reinvent parsing — Kaitai does that — it helps you **author, check, and bootstrap** the `.ksy` that
 turns a satellite's raw frames into labeled telemetry.
 
-## Where this fits — signal → decode → id
+## The SatNOGS fleet
 
-Three narrow, honest tools around one SatNOGS pass, each answering a different question:
+Four small, honest tools around a SatNOGS observation — three single-purpose engines, plus one app
+that composes them for a human reviewer:
 
-| stage | question | repo |
-|---|---|---|
-| detect | *is there a signal in this waterfall?* | [satnogs-signal](https://github.com/RYSATNOGS/satnogs-signal) |
-| **decode** | ***what does the frame say?*** | **satnogs-decoder** (this repo) |
-| identify | *which catalog object is it?* | [satnogs-id](https://github.com/RYSATNOGS/satnogs-id) |
+| repo | the question it answers |
+|---|---|
+| [satnogs-signal](https://github.com/RYSATNOGS/satnogs-signal) | *is there a signal in this waterfall?* — signal-vs-noise triage |
+| **satnogs-decoder** (this repo) | ***what does the frame say?*** — telemetry decoding |
+| [satnogs-id](https://github.com/RYSATNOGS/satnogs-id) | *which catalog object is it?* — Doppler identification |
+| [satnogs-dashboard](https://github.com/RYSATNOGS/satnogs-dashboard) | *review it all on one observation* — the workbench that runs the three engines |
 
-This repo is the middle stage: it turns a satellite's **raw frames into telemetry fields**.
+The three engines are standalone and read-only against SatNOGS; the dashboard is the surface that
+composes them. This repo is the **decode** stage — raw frames in, telemetry fields out.
 
 ## How it works
 
