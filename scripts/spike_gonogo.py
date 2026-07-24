@@ -21,7 +21,7 @@ NORAD = 47959  # GRBAlpha — very active in 2022
 MODULE = "grbalpha"  # satnogsdecoders.<MODULE>; class = MODULE.capitalize()
 START = "2022-06-15T00:00:00Z"
 END = "2022-06-15T06:00:00Z"  # 6-hour window -> small, fast result set
-UA = "satnogs-decoder-dev (research; gitlab.com/RYASTRA/satnogs-decoder)"
+UA = "satnogs-decoder-dev (research; gitlab.com/RYSATNOGS/satnogs-decoder)"
 
 
 def main() -> int:

@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_API = "https://db.satnogs.org/api/telemetry/"
-USER_AGENT = "satnogs-decoder (gitlab.com/RYASTRA/satnogs-decoder)"
+USER_AGENT = "satnogs-decoder (gitlab.com/RYSATNOGS/satnogs-decoder)"
 PAGE_DELAY = 10  # seconds between pages (~6 req/min good-citizen throttle)
 
 
